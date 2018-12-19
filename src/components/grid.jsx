@@ -12,13 +12,15 @@ export default class Grid extends React.Component {
 
         this.init = false;
         this.state = {
-            width: props.width || 64,
-            height: props.height || 64,
+            width: props.width || 24,
+            height: props.height || 24,
             playing: false,
             field: []
         }
 
-        this.updateLoop = setTimeout(this.update.bind(this), 1000/15 );
+        setTimeout(this.update.bind(this), 1000/15 );
+
+        window.cell = CellularAutomata;
     }
     
     componentDidMount () {
@@ -33,17 +35,16 @@ export default class Grid extends React.Component {
         let field = [];
 
         // Generate the grid
-        for(let h = 0; h < this.state.height; h += 1) {
+        for(let y = 0; y < this.state.height; y += 1) {
             field.push([]);
 
-            for(let w = 0; w < this.state.width; w += 1) {
-                let isAlive = this.getRandomLife(h,w);
-            
-                field[h].push({ alive: isAlive });
+            for(let x = 0; x < this.state.width; x += 1) {
+                field[y].push({ alive: this.getRandomLife() });
             }
         }
 
         nextState.field = field;
+        nextState.playing = true;
         this.setState(nextState);
     }
 
@@ -51,10 +52,10 @@ export default class Grid extends React.Component {
         let ran = Math.random() * 20 + 1;
         
         if(ran > 18) {
-            return alive;
+            return true;
         }
 
-        return !alive;
+        return false;
     }
 
     inRange(x,y) {
@@ -67,54 +68,115 @@ export default class Grid extends React.Component {
 
     getCell(x,y) {
         if(this.inRange(x,y)) {
-            return this.state.field[x][y];
+            return this.state.field[y][x];
         }
 
-        return false;
+        return { alive:false };
+    }
+
+    getAdjacentOrWrappedCellLife(x,y) {
+        let nx = x;
+        let ny = y;
+
+        if(x < 0) {
+            nx = this.state.width - 1;
+        }
+
+        if(y < 0) {
+            ny = this.state.height - 1;
+        }
+
+        if (x >= this.state.width - 1) {
+            nx = 0;
+        }
+
+        if (y >= this.state.height - 1) {
+            ny = 0;
+        }
+
+        return this.getCell(nx, ny);
     }
 
     getLivingNeighbors (x,y) {
         let livingNeighbors = 0;
-        
-        // Javascript automatically casts true to a number when adding
+        let debug = [['o','o','o'],
+                     ['o','o','o'],
+                     ['o','o','o']]
+
+        // Self
+        if(this.getAdjacentOrWrappedCellLife(x, y).alive) { debug[1][1] = 'x'; }
 
         // North
-        livingNeighbors += this.getCell(x, y + 1)
+        livingNeighbors += this.getAdjacentOrWrappedCellLife(x, y - 1).alive ? 1 : 0;
+        if(this.getAdjacentOrWrappedCellLife(x, y - 1).alive) { debug[0][1] = 'x'; }
         
+        // North East
+        livingNeighbors += this.getAdjacentOrWrappedCellLife(x + 1, y - 1).alive ? 1 : 0;
+        if(this.getAdjacentOrWrappedCellLife(x + 1, y - 1).alive) { debug[0][2] = 'x'; }
+
         // East
-        livingNeighbors += this.getCell(x + 1, y);
+        livingNeighbors += this.getAdjacentOrWrappedCellLife(x + 1, y).alive ? 1 : 0;
+        if(this.getAdjacentOrWrappedCellLife(x + 1, y).alive) { debug[1][2] = 'x' };
         
+        // South East
+        livingNeighbors += this.getAdjacentOrWrappedCellLife(x + 1, y + 1).alive ? 1 : 0;
+        if(this.getAdjacentOrWrappedCellLife(x + 1, y + 1).alive) { debug[2][2] = 'x'; }
+
         // South 
-        livingNeighbors += this.getCell(x, y-1);
+        livingNeighbors += this.getAdjacentOrWrappedCellLife(x, y + 1).alive ? 1 : 0;
+        if(this.getAdjacentOrWrappedCellLife(x, y + 1).alive) { debug[2][1] = 'x' };
+
+        // South West
+        livingNeighbors += this.getAdjacentOrWrappedCellLife(x - 1, y + 1).alive ? 1 : 0;
+        if(this.getAdjacentOrWrappedCellLife(x - 1, y + 1).alive) { debug[2][0] = 'x'; }
 
         // West
-        livingNeighbors += this.getCell(x-1, y);
+        livingNeighbors += this.getAdjacentOrWrappedCellLife(x - 1, y).alive ? 1 : 0;
+        if(this.getAdjacentOrWrappedCellLife(x - 1, y).alive) { debug[1][0] = 'x' };
+
+        // North West
+        livingNeighbors += this.getAdjacentOrWrappedCellLife(x - 1, y - 1).alive ? 1 : 0;
+        if(this.getAdjacentOrWrappedCellLife(x - 1, y - 1).alive) { debug[0][0] = 'x'; }
+        
+        // console.log(debug[0]);
+        // console.log(debug[1]);
+        // console.log(debug[2]);
+        // console.log('neighbors for (' + x + ',' + y + ')', livingNeighbors);
+        // console.log('-----------------')
+
 
         return livingNeighbors;
     }
 
 
     update () {
-        if(!this.state.playing) { return; }
+        if(!this.state.playing) { 
+            setTimeout(this.update.bind(this), 1000/15 );
+            return; 
+        }
         const nextState = this.state;
         const nextField = this.state.field;
 
         // Loop through each cell
-        for(let y = 0; y < this.state.field.length; y += 1) {
-            for(let x = 0; x < this.state.field[0]; x += 1) {
+        for(let y = 0; y < this.state.height; y += 1) {
+            for(let x = 0; x < this.state.width; x += 1) {
                 // Get neighbor states
                 let livingNeighbors = this.getLivingNeighbors(x,y);
-
+                
                 // Compute cell life
-                nextField[y][x] = CellularAutomata.computeCellLife(this.getCell(x,y), livingNeighbors);
+                nextField[y][x].alive = CellularAutomata.computeCellLife(this.getCell(x,y).alive, livingNeighbors);
             }
         }
 
-        console.log('updating');
-
         // Run each cell through the cellular automata
         nextState.field = nextField;
-        this.setState(nextState);
+        this.setState(nextState, () => {
+            setTimeout(this.update.bind(this), 1000/5 );
+        });
+
+        // debugger;
+        console.clear();
+
     }
 
     play () {
@@ -132,7 +194,7 @@ export default class Grid extends React.Component {
                 { this.state.field.map( (row, rowIndex) => {
                     return(
                         row.map( (tile, tileIndex) => {
-                            return (<Tile key={rowIndex + tileIndex + '_' + tile.alive} alive={ tile.alive }></Tile>)
+                            return (<Tile key={rowIndex + ',' + tileIndex + '_' + tile.alive} alive={ tile.alive }></Tile>)
                         })
                     );
                 })}
