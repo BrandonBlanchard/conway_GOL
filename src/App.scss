@@ -32,7 +32,6 @@ button {
   border: none;
   padding: 6px 10px;
   width: 100%;
-  transition: ease-in-out padding 300ms, ease-in-out background-color 300ms, ease-in-out color 300ms;
   font-weight: bolder;
   cursor: pointer;
 }
@@ -47,10 +46,8 @@ button:hover {
 [class^="tile"] {
   box-sizing: border-box;
   background-color: #e4e4e4;
-  width: 10px;
-  height: 10px;
-
-  transition: ease-in-out background-color 300ms;
+  width: 6px;
+  height: 6px;
 }
 
 .tile--alive {
